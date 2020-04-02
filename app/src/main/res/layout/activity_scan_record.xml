@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    android:layout_height="match_parent"
+    android:layout_width="match_parent"
+    android:background="@color/bg_white"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <TextView
+        android:id="@+id/tv_scan_record_title"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/bg_color"
+        android:text="@string/input_info"
+        android:gravity="center"
+        android:textColor="@color/bg_white"
+        android:textSize="@dimen/x18"
+        android:textStyle="bold"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintHeight_percent="0.1"/>
+
+    <ImageButton
+        android:id="@+id/btn_scan_record_back"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@mipmap/icon_back"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintDimensionRatio="1:1"
+        android:layout_marginStart="@dimen/x10"
+        app:layout_constraintWidth_percent="0.08"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_scan_record_title"/>
+
+    <Button
+        android:id="@+id/btn_scan_record_save"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:text="@string/save_"
+        android:textSize="@dimen/x12"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintHeight_percent="0.09"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_scan_record_title"/>
+
+    <TextView
+        android:id="@+id/tv_scan_record_total"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/tv_scan_record_title"
+        android:text="@string/scan_total"
+        android:textStyle="bold"
+        android:textColor="@color/bg_black"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="10dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_scan_record_title"/>
+
+    <TextView
+        android:id="@+id/tv_scan_record_total_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="123123"
+        android:textStyle="bold"
+        android:textColor="@color/bg_black"
+        app:layout_constraintTop_toTopOf="@+id/tv_scan_record_total"
+        app:layout_constraintStart_toEndOf="@+id/tv_scan_record_total"/>
+
+    <TextView
+        android:id="@+id/tv_scan_record_today"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/today_total"
+        android:textColor="@color/bg_black"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@+id/tv_scan_record_today_value"
+        app:layout_constraintTop_toTopOf="@+id/tv_scan_record_today_value"/>
+
+    <TextView
+        android:id="@+id/tv_scan_record_today_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1111"
+        android:layout_marginEnd="20dp"
+        android:textColor="@color/bg_black"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="@+id/tv_scan_record_total"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_scan_record_title"/>
+
+    <View
+        android:id="@+id/v_scan_record_top_line"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="10dp"
+        android:background="@color/bg_black"
+        app:layout_constraintTop_toBottomOf="@+id/tv_scan_record_total"/>
+
+    <LinearLayout
+        android:id="@+id/ll_record_title"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/x30"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/v_scan_record_top_line"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:gravity="center"
+            android:textColor="@color/bg_black"
+            android:textStyle="bold"
+            android:text="@string/filecode"/>
+
+        <View
+            android:layout_width="1dp"
+            android:background="@color/bg_black"
+            android:layout_height="match_parent" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:gravity="center"
+            android:textColor="@color/bg_black"
+            android:textStyle="bold"
+            android:text="@string/scan_time"/>
+
+        <View
+            android:layout_width="1dp"
+            android:background="@color/bg_black"
+            android:layout_height="match_parent" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textColor="@color/bg_black"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/bg_black"
+        app:layout_constraintTop_toBottomOf="@+id/ll_record_title"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_scan_record"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/tv_scan_record_back_scan"
+        app:layout_constraintTop_toBottomOf="@+id/ll_record_title">
+    </androidx.recyclerview.widget.RecyclerView>
+
+    <TextView
+        android:id="@+id/tv_scan_record_back_scan"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="1dp"
+        android:background="@color/bg_color"
+        android:gravity="center"
+        android:text="@string/back_to_scan"
+        android:textColor="@color/bg_white"
+        android:textSize="@dimen/x20"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHeight_percent="0.1"/>
+</androidx.constraintlayout.widget.ConstraintLayout>

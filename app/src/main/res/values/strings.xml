@@ -1,0 +1,69 @@
+<resources>
+    <string name="app_name">DataexpoZKGate</string>
+    <string name="scan_title">扫描</string>
+    <string name="scan_title_text">扫描结果</string>
+    <string name="last_scan">上一个扫描结果</string>
+    <string name="null_scan">扫描结果为空</string>
+    <string name="repeat_scan">请不要重复扫描</string>
+    <string name="renewal">转换</string>
+    <string name="model_select_title">模式选择</string>
+    <string name="online_model_text">在线模式</string>
+    <string name="online_model">1.在线模式</string>
+    <string name="offline_model">扫描</string>
+    <string name="show_local_data">查看本地数据</string>
+    <string name="upload_data">4.上传本地离线数据</string>
+    <string name="input_expo_id">输入展会ID</string>
+    <string name="input_addrest">输入门禁地点</string>
+    <string name="confirm">确认</string>
+    <string name="input_info">扫描信息</string>
+    <string name="input_login_qrcode">输入登记二维码</string>
+    <string name="input_phone">输入手机</string>
+    <string name="input_phone_or_qrcode">输入登记二维码或手机号</string>
+    <string name="query">点击查询</string>
+    <string name="query_result">查询结果</string>
+    <string name="name">姓名:</string>
+    <string name="company_name">单位名称:</string>
+    <string name="login_qrcode">登记二维码:</string>
+    <string name="renewal_check_in">1.换证签到</string>
+    <string name="check_in">2.完成签到</string>
+    <string name="check_in_str">完成签到</string>
+    <string name="renewal_check_in_str">换证签到</string>
+    <string name="input_bar_code">输入证件条形码</string>
+    <string name="check_in_success">签到成功</string>
+    <string name="back_info_input">返回输入信息页</string>
+    <string name="login_qrcode_scan_value">注册二维码扫描结果</string>
+    <string name="bar_codescan_value">证件条形码扫描结果</string>
+    <string name="last_scan_value">上一个登记号:</string>
+    <string name="scan_total">总数：</string>
+    <string name="today_total">今日：</string>
+    <string name="eucode">证件码</string>
+    <string name="filecode">注册码</string>
+    <string name="scan_time">扫描时间</string>
+    <string name="back_to_scan">返回快速扫描界面</string>
+    <string name="upload_local_data">上传本地数据</string>
+    <string name="upload_local_datatitle">数据上传</string>
+    <string name="total_scan">扫描总数</string>
+    <string name="upload_success_total">已上传</string>
+    <string name="upload_wait_total">待上传</string>
+    <string name="upload_no_close">数据上传中，请不要关闭电源</string>
+    <string name="upload_success">上传完成</string>
+    <string name="upload_success_value">本次上传%1$d条数据</string>
+    <string name="save_">保存到本地</string>
+    <string name="start_upload">开始上传</string>
+    <string name="stop_upload">暂停上传</string>
+    <string name="scan_value_error">扫描内容异常</string>
+    <string name="delete">删除</string>
+    <string name="back_select">返回选择界面</string>
+
+    <string name="expoid">展会id:</string>
+    <string name="company">公司:</string>
+    <string name="role">参展角色:</string>
+    <string name="code">报名编码:</string>
+
+    <string name="welcome">欢迎光临</string>
+
+    <string name="scan_count">扫描次数：</string>
+
+    <!--digits-->
+    <string name="digits_num">0123456789abcdefghijklmnopqrstuvwxyzQWERTYUIOPASDFGHJKLZXCVBNM</string>
+</resources>
