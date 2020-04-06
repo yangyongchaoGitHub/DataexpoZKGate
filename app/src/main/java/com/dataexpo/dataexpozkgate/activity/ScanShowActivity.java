@@ -72,6 +72,10 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
     private Device mDevice;
     private volatile boolean isOpenDevice;
 
+    private boolean running = true;
+    private volatile int open = 1;
+    private LockThread lockThread = null;
+
     //
     int showCount = 0;
 
@@ -108,7 +112,7 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
 
         IntentFilter intentFilter = new IntentFilter(com.zkteco.android.constant.Const.ACTION_USB_PERMISSION);
         registerReceiver(usbBroadcastReceiver, intentFilter);
-        
+
         initData();
     }
 
@@ -191,6 +195,10 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
                         .LENGTH_LONG).show();
                 e.printStackTrace();
             }
+        }
+        if (lockThread == null) {
+            lockThread = new LockThread();
+            lockThread.start();
         }
         Log.e(TAG, "onStart");
     }
@@ -335,7 +343,7 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
         //Log.i(TAG, " event:" + event.toString());
         if (event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN) {
             //if ("".equals(tv_code.getText().toString().trim())) {
-                qrcodeScanEnd();
+            qrcodeScanEnd();
             //}
             return false;
         }
@@ -374,6 +382,7 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
         super.onDestroy();
         unregisterReceiver(usbBroadcastReceiver);
         mDevice.closeDevice();
+        running = false;
     }
 
 //    private void toCheckIn() {
@@ -508,71 +517,23 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
 //        });
     }
 
-    static int op = 1;
-
     private void openGateDoor() {
-        if (op == 0) {
-            op = 1;
-        } else {
-            op = 0;
-        }
         tv_log.append("scanEnd openGateDoor " );
-
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                tv_welcome.setVisibility(View.VISIBLE);
-            }
-        });
         try {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    appendLog("setLock1 " + op);
+                    Toast.makeText(ScanShowActivity.this, "set open 0 ", Toast.LENGTH_SHORT).show();
                 }
             });
-
-            mDevice.setLock1(op);
-
-        } catch (final SdkException e) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    appendLog(e.getMessage());
-                }
-            });
-
+            open = 0;
+            //开门
+            //mDevice.setLock1(0);
+            //Thread.sleep(2000);
+            //mDevice.setLock1(1);
+        } catch (Exception e) {
             e.printStackTrace();
         }
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                try {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            appendLog("setLock2 " + op);
-                        }
-                    });
-
-                    mDevice.setLock2(op);
-                } catch (final SdkException e) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            appendLog(e.getMessage());
-                        }
-                    });
-                    e.printStackTrace();
-                }
-            }
-        }).start();
     }
 
     private boolean checkInput() {
@@ -589,10 +550,40 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
     }
 
     private void appendLog(String text) {
+        if (1==1) {
+            return;
+        }
         if (tv_log.getLineCount() > 28) {
             tv_log.setText("");
         }
         tv_log.append("\r\n" + text);
     }
 
+    class LockThread extends Thread {
+        @Override
+        public void run() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(ScanShowActivity.this, "LockThread run ", Toast.LENGTH_SHORT).show();
+                }
+            });
+            while (running) {
+                try {
+                    if (open == 0) {
+
+                        mDevice.setLock1(0);
+                        sleep(2000);
+                        open = 1;
+                        mDevice.setLock1(1);
+
+                    } else {
+                        sleep(50);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
 }
