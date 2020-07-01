@@ -1,19 +1,20 @@
 package com.dataexpo.dataexpozkgate.activity;
 
-import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.hardware.usb.UsbManager;
 import android.media.AudioManager;
 import android.media.SoundPool;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -27,13 +28,20 @@ import com.dataexpo.dataexpozkgate.R;
 import com.dataexpo.dataexpozkgate.comm.DBUtils;
 import com.dataexpo.dataexpozkgate.comm.FileUtils;
 import com.dataexpo.dataexpozkgate.comm.Utils;
+import com.dataexpo.dataexpozkgate.model.CoolCarVo;
 import com.dataexpo.dataexpozkgate.model.FindResult;
+import com.dataexpo.dataexpozkgate.model.TestResult;
 import com.dataexpo.dataexpozkgate.net.HttpCallback;
 import com.dataexpo.dataexpozkgate.net.HttpService;
 import com.dataexpo.dataexpozkgate.net.URLs;
+import com.dataexpo.dataexpozkgate.views.ConfigDialog;
+import com.dataexpo.dataexpozkgate.views.LoginDialog;
 import com.google.gson.Gson;
 import com.zkteco.android.constant.SdkException;
 import com.zkteco.android.device.Device;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -43,7 +51,7 @@ import okhttp3.Call;
 /**
  * 中控闸机头   配合扫码头使用
  */
-public class ScanShowActivity extends BascActivity implements View.OnClickListener{
+public class ScanShowActivity extends BascActivity implements View.OnClickListener, View.OnTouchListener {
     private static final String TAG = ScanShowActivity.class.getSimpleName();
     private Context mContext;
     private TextView tv_last;
@@ -55,6 +63,7 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
     private TextView tv_company;
     private TextView tv_role;
     private TextView tv_number;
+    private TextView tv_check_model;
     private String qrcode = "";
     private String qrcode_last = "";
     private EditText et_code;
@@ -76,7 +85,8 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
     private volatile int open = 1;
     private LockThread lockThread = null;
 
-    //
+    //检查模式  0是离线模式  1是在线模式
+    private int checkModel = 1;
     int showCount = 0;
 
     @Override
@@ -88,23 +98,6 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
         initView();
         soundPool = new SoundPool(10, AudioManager.STREAM_MUSIC, 5);
         soundMap.put(1, soundPool.load(mContext, R.raw.rescan, 1)); //播放的声音文件
-//        new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                try {
-//                    Thread.sleep(5000);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//                runOnUiThread(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        et_code.setText("2020A:hNWct8lCYCJB1GSYufEsrjtDyM7xzyXNS4xI/zuUT/QtXV7lPMcQUoXSegdHC5LuLau9RAdknLNcpy7bMXQGiQ==");
-//                        qrcodeScanEnd();
-//                    }
-//                });
-//            }
-//        }).start();
 
         isOpenDevice = false;
         mDevice = new Device(getApplicationContext());
@@ -130,15 +123,12 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
                 Log.e(TAG, "receive");
                 if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
                     try {
-                        appendLog("com.zkteco.android.constant.Const!");
                         if (mDevice.openDevice()) {
-                            appendLog("open ok!");
                             Log.e(TAG, "open ok");
                             isOpenDevice = true;
                             Toast.makeText(getApplicationContext(), "Open device successful!", Toast.LENGTH_SHORT)
                                     .show();
                         } else {
-                            appendLog("open ofail!");
                             Log.e(TAG, "open fail");
                             Toast.makeText(getApplicationContext(), "Open device failed, stop operate and check, or " +
                                     "Demo will crash", Toast
@@ -156,40 +146,18 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
     protected void onStart() {
         super.onStart();
         if (!isOpenDevice) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    appendLog("start open");
-                }
-            });
             try {
                 if (mDevice.openDevice()) {
                     isOpenDevice = true;
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            appendLog("Open device successful!");
-                        }
-                    });
+
                     //mDevice.setWatchdogTime(1000);
                     Toast.makeText(this, "Open device successful!", Toast.LENGTH_SHORT).show();
                 } else {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            appendLog("Open device failed ！！！ ");
-                        }
-                    });
+
                     Toast.makeText(this, "Open device failed, stop operate and check, or Demo will crash", Toast
                             .LENGTH_LONG).show();
                 }
             } catch (SdkException e) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        appendLog("open device error!!!!!!!!!!!!!!!!!");
-                    }
-                });
                 Log.e(TAG, "Open UsbDevice failed");
                 Toast.makeText(this, "Open device failed, stop operate and check, or Demo will crash", Toast
                         .LENGTH_LONG).show();
@@ -211,12 +179,20 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
         et_code = findViewById(R.id.et_qrcode);
         tv_welcome = findViewById(R.id.tv_offline_qrcode_welcome);
         tv_expoid = findViewById(R.id.tv_expo_id);
+
         tv_name = findViewById(R.id.tv_expo_name);
+        tv_name.setOnTouchListener(this);
         tv_code = findViewById(R.id.tv_expo_code);
+        tv_code.setOnTouchListener(this);
         tv_company = findViewById(R.id.tv_expo_company);
+        tv_company.setOnTouchListener(this);
         tv_role = findViewById(R.id.tv_expo_role);
+        tv_role.setOnTouchListener(this);
         tv_number = findViewById(R.id.tv_expo_number);
+        tv_number.setOnTouchListener(this);
         tv_count = findViewById(R.id.tv_count);
+        tv_count.setOnTouchListener(this);
+        tv_check_model = findViewById(R.id.tv_check_model);
 
         tv_log = findViewById(R.id.tv_log);
         btn_log = findViewById(R.id.btn_log);
@@ -232,11 +208,19 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
     private void qrcodeScanEnd() {
         String scanValue = et_code.getText().toString().trim().replaceAll("\n", "");
 
-        appendLog("scanEnd: " + scanValue);
-        Log.i(TAG, "scanEnd: " + scanValue);
         if (TextUtils.isEmpty(scanValue)) {
             //scanError(tv_qrcode_warning, R.string.null_scan);
             et_code.setText("");
+            return;
+        }
+
+        //设置通码，当扫描结果是通码时，直接通行
+        if ("YW000000".equals(scanValue)) {
+            long dateTime = new Date().getTime();// - 60*60*24*1000;
+            String date = Utils.formatTime(dateTime, "yyyy-MM-dd_HH:mm:ss");
+            DBUtils.getInstance().insertData("通码", date, "", "", "", "");
+            FileUtils.saveRecord("通码", date, "", "", "", "");
+            open = 0;
             return;
         }
 
@@ -280,7 +264,7 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
 //        }
 
 
-        tv_count.setText(++showCount + "");
+
         tv_qrcode_warning.setText("");
         //long dateTime = new Date().getTime();
         //String date = Utils.formatTime(dateTime, "yyyy-MM-dd_HH:mm:ss");
@@ -378,6 +362,71 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
     }
 
     @Override
+    public boolean onTouch(View v, MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+            switch (v.getId()) {
+                case R.id.tv_expo_name:
+                case R.id.tv_expo_code:
+                case R.id.tv_expo_company:
+                case R.id.tv_expo_role:
+                case R.id.tv_expo_number:
+                case R.id.tv_count:
+                    final LoginDialog dialog = new LoginDialog(ScanShowActivity.this);
+                    dialog.setOnClickBottomListener(new LoginDialog.OnClickBottomListener() {
+                        @Override
+                        public void onPositiveClick() {
+                            Log.i(TAG, dialog.getInput() + "-----------------------");
+
+                            if ("159632".equals(dialog.getInput())) {
+                                final ConfigDialog configDialog = new ConfigDialog(ScanShowActivity.this, checkModel == 1);
+
+                                configDialog.setOnClickBottomListener(new ConfigDialog.OnClickBottomListener() {
+                                    @Override
+                                    public void onPositiveClick() {
+                                        Log.i(TAG, configDialog.isCheck() + "-----------------------");
+                                        if (configDialog.isCheck()) {
+                                            checkModel = 1;
+                                            tv_check_model.setBackgroundColor(getResources().getColor(R.color.bg_green));
+                                        } else {
+                                            checkModel = 0;
+                                            tv_check_model.setBackgroundColor(getResources().getColor(R.color.bg_color_tiny));
+                                        }
+                                        configDialog.dismiss();
+                                    }
+
+                                    @Override
+                                    public void onNegtiveClick() {
+                                        configDialog.dismiss();
+                                    }
+                                });
+                                configDialog.show();
+                            } else {
+                                et_code.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Toast.makeText(ScanShowActivity.this, "密码错误！！", Toast.LENGTH_LONG).show();
+                                    }
+                                });
+                            }
+                            dialog.dismiss();
+                        }
+
+                        @Override
+                        public void onNegtiveClick() {
+                            dialog.dismiss();
+                        }
+                    });
+
+                    dialog.show();
+
+                    break;
+                default:
+            }
+        }
+        return false;
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         unregisterReceiver(usbBroadcastReceiver);
@@ -420,20 +469,56 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
 //    }
 
     private void offlineCheckIn(String name, String company, String role, String code, String expoid) {
-        long dateTime = new Date().getTime();// - 60*60*24*1000;
-        String date = Utils.formatTime(dateTime, "yyyy-MM-dd_HH:mm:ss");
-        DBUtils.getInstance().insertData(name, date, company, role, code, expoid);
-        FileUtils.saveRecord(name, date, company, role, code, expoid);
-        tv_last.setText(qrcode_last);
+        CoolCarVo vo = new CoolCarVo();
+        vo.setCode(code);
+        vo.setCompany(company);
+        vo.setRole(role);
+        vo.setExpoId(expoid);
+        vo.setName(name);
+        vo.setDeviceSerial("testDev0002");
+        if ("2020A".equals(expoid)) {
+            vo.setType(1);
+        } else {
+            vo.setType(2);
+        }
 
-        qrcode_last = qrcode;
-        //getCanOpen();
-        openGateDoor();
+        //在线模式
+        if (checkModel == 1) {
+            MyAsyncTask task  = new MyAsyncTask();
+            task.execute(vo);
+        } else {
+            long dateTime = new Date().getTime();// - 60*60*24*1000;
+            String date = Utils.formatTime(dateTime, "yyyy-MM-dd_HH:mm:ss");
+            DBUtils.getInstance().insertData(name, date, company, role, code, expoid);
+            FileUtils.saveRecord(name, date, company, role, code, expoid);
+            tv_last.setText(qrcode_last);
 
-        perTime_qrcode = dateTime;
-        String c = "2020A|杨勇勇|数展|监管机构|12345678987650|2020A";
-        String encode = Utils.encrypt(c);
-        Log.i(TAG, " a  code: " + encode);
+            qrcode_last = qrcode;
+            tv_count.setText(++showCount + "");
+
+            openGateDoor();
+            Toast.makeText(ScanShowActivity.this, "开门", Toast.LENGTH_LONG).show();
+
+            perTime_qrcode = dateTime;
+            Log.i(TAG, "requestFocus!!!");
+            et_code.requestFocus();
+        }
+
+//        long dateTime = new Date().getTime();// - 60*60*24*1000;
+//        String date = Utils.formatTime(dateTime, "yyyy-MM-dd_HH:mm:ss");
+//        DBUtils.getInstance().insertData(name, date, company, role, code, expoid);
+//        FileUtils.saveRecord(name, date, company, role, code, expoid);
+//        tv_last.setText(qrcode_last);
+//
+//        qrcode_last = qrcode;
+//        //getCanOpen();
+//
+//        openGateDoor();
+//
+//        perTime_qrcode = dateTime;
+//        String c = "2020A|杨勇勇|数展|监管机构|12345678987650|2020A";
+//        String encode = Utils.encrypt(c);
+//        Log.i(TAG, " a  code: " + encode);
     }
 
     private void getCanOpen() {
@@ -549,25 +634,110 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
         v.setText(msgId);
     }
 
-    private void appendLog(String text) {
-        if (1==1) {
-            return;
+    public class MyAsyncTask extends AsyncTask<CoolCarVo, String, CoolCarVo> {
+        @Override
+        protected CoolCarVo doInBackground(CoolCarVo... vos) {
+            CoolCarVo vo = vos[0];
+            RestTemplate template = new RestTemplate();
+
+            ResponseEntity<TestResult> result = null;
+            try {
+                result = template.postForEntity("http://reg.dataexpo.com.cn/gate-api/api/checkCodeInsert", vo, TestResult.class);
+                //result = template.postForEntity("http://192.168.1.8:8096/api/checkCodeInsert", vo, TestResult.class);
+            } catch (Exception e) {
+                et_code.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(ScanShowActivity.this, "服务器接口访问异常！！", Toast.LENGTH_LONG).show();
+                    }
+                });
+                return null;
+            }
+
+            if (result == null) {
+                return null;
+            }
+            TestResult re = result.getBody();
+            if (re == null) {
+                return null;
+            }
+
+            Log.i(TAG, re.getErrcode() + "----- " + re.getData());
+            if (re.getErrcode() == 0 && (boolean)re.getData()) {
+                return vo;
+            } else {
+                return null;
+            }
+//            Log.i("ceshi ", result.getBody().getData() + " " +
+//                    result.getBody().getErrcode());
+//
+//            return  "ok";
         }
-        if (tv_log.getLineCount() > 28) {
-            tv_log.setText("");
+        /**
+         * 这里的String参数对应AsyncTask中的第三个参数（也就是接收doInBackground的返回值）
+         * 在doInBackground方法执行结束之后在运行，并且运行在UI线程当中 可以对UI空间进行设置
+         */
+        @Override
+        protected void onPostExecute(final CoolCarVo result) {
+            //btn.setText("线程结束" + result);
+            Log.i(TAG, "exec end  " + result);
+            et_code.post(new Runnable() {
+                @Override
+                public void run() {
+                    et_code.requestFocus();
+                }
+            });
+
+            if (result == null) {
+                et_code.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(ScanShowActivity.this, "超过使用次数！！！", Toast.LENGTH_LONG).show();
+                    }
+                });
+                return;
+            }
+            final long dateTime = new Date().getTime();
+
+            tv_last.post(new Runnable() {
+                @Override
+                public void run() {
+                    // - 60*60*24*1000;
+                    String date = Utils.formatTime(dateTime, "yyyy-MM-dd_HH:mm:ss");
+                    DBUtils.getInstance().insertData(result.getName(), date, result.getCompany(), result.getRole(), result.getCode(), result.getExpoId());
+                    FileUtils.saveRecord(result.getName(), date, result.getCompany(), result.getRole(), result.getCode(), result.getExpoId());
+                    tv_last.setText(qrcode_last);
+                    tv_count.setText(++showCount + "");
+                    Toast.makeText(ScanShowActivity.this, "开门", Toast.LENGTH_LONG).show();
+                }
+            });
+
+            qrcode_last = qrcode;
+
+            openGateDoor();
+
+            perTime_qrcode = dateTime;
         }
-        tv_log.append("\r\n" + text);
+        //该方法运行在UI线程当中,并且运行在UI线程当中 可以对UI空间进行设置
+        @Override
+        protected void onPreExecute() {
+            //btn.setText("开始执行异步线程");
+        }
+        @Override
+        protected void onProgressUpdate(String... values) {
+
+        }
     }
 
     class LockThread extends Thread {
         @Override
         public void run() {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(ScanShowActivity.this, "LockThread run ", Toast.LENGTH_SHORT).show();
-                }
-            });
+//            runOnUiThread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    Toast.makeText(ScanShowActivity.this, "LockThread run ", Toast.LENGTH_SHORT).show();
+//                }
+//            });
             while (running) {
                 try {
                     if (open == 0) {
