@@ -24,10 +24,10 @@ public class FileUtils {
      * @param code
      * @param expoid
      */
-    public static void saveRecord(String name, String date, String company, String role, String code, String expoid) {
+    public static void saveRecord(String name, String date, String company, String role, String code, String expoid) throws Exception {
         File file = new File(Environment.getExternalStorageDirectory().getPath());
 
-        Log.i("save file-------------", file.getAbsolutePath());
+        //Log.i("save file-------------", file.getAbsolutePath());
         if (!file.exists()) {
             file.mkdirs();
         }

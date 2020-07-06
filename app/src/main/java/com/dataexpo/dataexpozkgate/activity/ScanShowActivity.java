@@ -10,6 +10,7 @@ import android.hardware.usb.UsbManager;
 import android.media.AudioManager;
 import android.media.SoundPool;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -43,6 +44,7 @@ import com.zkteco.android.device.Device;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
+import java.lang.reflect.Method;
 import java.util.Date;
 import java.util.HashMap;
 
@@ -88,6 +90,9 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
     //检查模式  0是离线模式  1是在线模式
     private int checkModel = 1;
     int showCount = 0;
+    String serial = "";
+    //
+    long scanTime = System.currentTimeMillis();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,6 +112,9 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
         registerReceiver(usbBroadcastReceiver, intentFilter);
 
         initData();
+        serial = getSerialNumber();
+        //Log.i(TAG, "serial  " + getSerialNumber());
+        Toast.makeText(this, "serial: " + serial, Toast.LENGTH_SHORT).show();
     }
 
     private void initData() {
@@ -214,35 +222,58 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
             return;
         }
 
+        //设置扫码执行间隔（不是设置扫码间隔）
+        if (System.currentTimeMillis() - scanTime < 3000) {
+            et_code.setText("");
+            return;
+        }
+
+        scanTime = System.currentTimeMillis();
+
         //设置通码，当扫描结果是通码时，直接通行
         if ("YW000000".equals(scanValue)) {
+            et_code.setText("");
             long dateTime = new Date().getTime();// - 60*60*24*1000;
             String date = Utils.formatTime(dateTime, "yyyy-MM-dd_HH:mm:ss");
             DBUtils.getInstance().insertData("通码", date, "", "", "", "");
-            FileUtils.saveRecord("通码", date, "", "", "", "");
+            try {
+                FileUtils.saveRecord("通码", date, "", "", "", "");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            tv_expoid.setText("");
+            tv_name.setText("");
+            tv_code.setText("");
+            tv_company.setText("");
+            tv_role.setText("请通过");
+            tv_number.setText("");
             open = 0;
+
             return;
         }
 
         if (!checkAES128CBC(scanValue)) {
             //scanError(tv_qrcode_warning, R.string.scan_value_error);
-            final AlertDialog.Builder normalDialog =
-                    new AlertDialog.Builder(mContext);
-            normalDialog.setMessage("扫描内容异常！");
-            normalDialog.setNegativeButton("确定",
-                    new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                        }
-                    });
-            normalDialog.setPositiveButton("取消",
-                    new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                        }
-                    });
-            // 显示
-            normalDialog.show();
+//            final AlertDialog.Builder normalDialog =
+//                    new AlertDialog.Builder(mContext);
+//            normalDialog.setMessage("扫描内容异常！");
+//            normalDialog.setNegativeButton("确定",
+//                    new DialogInterface.OnClickListener() {
+//                        @Override
+//                        public void onClick(DialogInterface dialog, int which) {
+//                        }
+//                    });
+//            normalDialog.setPositiveButton("取消",
+//                    new DialogInterface.OnClickListener() {
+//                        @Override
+//                        public void onClick(DialogInterface dialog, int which) {
+//                        }
+//                    });
+//            // 显示
+//            normalDialog.show();
+
+            Toast.makeText(ScanShowActivity.this, "扫描内容异常！", Toast.LENGTH_LONG).show();
+
             tv_expoid.setText("");
             tv_name.setText("");
             tv_code.setText("");
@@ -475,35 +506,43 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
         vo.setRole(role);
         vo.setExpoId(expoid);
         vo.setName(name);
-        vo.setDeviceSerial("testDev0002");
+        vo.setDeviceSerial(serial);
         if ("2020A".equals(expoid)) {
+            //专业观众
             vo.setType(1);
         } else {
+            //普通观众
             vo.setType(2);
         }
 
         //在线模式
-        if (checkModel == 1) {
-            MyAsyncTask task  = new MyAsyncTask();
-            task.execute(vo);
-        } else {
+        //if (checkModel == 1) {
+        //    MyAsyncTask task  = new MyAsyncTask();
+        //    task.execute(vo);
+        //} else {
             long dateTime = new Date().getTime();// - 60*60*24*1000;
             String date = Utils.formatTime(dateTime, "yyyy-MM-dd_HH:mm:ss");
             DBUtils.getInstance().insertData(name, date, company, role, code, expoid);
+        try {
             FileUtils.saveRecord(name, date, company, role, code, expoid);
-            tv_last.setText(qrcode_last);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        tv_last.setText(qrcode_last);
 
             qrcode_last = qrcode;
             tv_count.setText(++showCount + "");
 
             openGateDoor();
-            Toast.makeText(ScanShowActivity.this, "开门", Toast.LENGTH_LONG).show();
+            //Toast.makeText(ScanShowActivity.this, "开门", Toast.LENGTH_LONG).show();
 
             perTime_qrcode = dateTime;
             Log.i(TAG, "requestFocus!!!");
             et_code.requestFocus();
-        }
+        //}
 
+        MyAsyncTask task  = new MyAsyncTask();
+        task.execute(vo);
 //        long dateTime = new Date().getTime();// - 60*60*24*1000;
 //        String date = Utils.formatTime(dateTime, "yyyy-MM-dd_HH:mm:ss");
 //        DBUtils.getInstance().insertData(name, date, company, role, code, expoid);
@@ -603,22 +642,23 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
     }
 
     private void openGateDoor() {
-        tv_log.append("scanEnd openGateDoor " );
-        try {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(ScanShowActivity.this, "set open 0 ", Toast.LENGTH_SHORT).show();
-                }
-            });
-            open = 0;
+        open = 0;
+        //tv_log.append("scanEnd openGateDoor " );
+        //        try {
+//            runOnUiThread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    Toast.makeText(ScanShowActivity.this, "set open 0 ", Toast.LENGTH_SHORT).show();
+//                }
+//            });
+
             //开门
             //mDevice.setLock1(0);
             //Thread.sleep(2000);
             //mDevice.setLock1(1);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
     }
 
     private boolean checkInput() {
@@ -645,33 +685,31 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
                 result = template.postForEntity("http://reg.dataexpo.com.cn/gate-api/api/checkCodeInsert", vo, TestResult.class);
                 //result = template.postForEntity("http://192.168.1.8:8096/api/checkCodeInsert", vo, TestResult.class);
             } catch (Exception e) {
-                et_code.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(ScanShowActivity.this, "服务器接口访问异常！！", Toast.LENGTH_LONG).show();
-                    }
-                });
+                if (checkModel == 1) {
+                    et_code.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(ScanShowActivity.this, "服务器接口访问异常！！已记录到本地", Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
                 return null;
             }
-
-            if (result == null) {
-                return null;
-            }
-            TestResult re = result.getBody();
-            if (re == null) {
-                return null;
-            }
-
-            Log.i(TAG, re.getErrcode() + "----- " + re.getData());
-            if (re.getErrcode() == 0 && (boolean)re.getData()) {
-                return vo;
-            } else {
-                return null;
-            }
-//            Log.i("ceshi ", result.getBody().getData() + " " +
-//                    result.getBody().getErrcode());
+            return null;
+//            if (result == null) {
+//                return null;
+//            }
+//            TestResult re = result.getBody();
+//            if (re == null) {
+//                return null;
+//            }
 //
-//            return  "ok";
+//            Log.i(TAG, re.getErrcode() + "----- " + re.getData());
+//            if (re.getErrcode() == 0 && (boolean)re.getData()) {
+//                return vo;
+//            } else {
+//                return null;
+//            }
         }
         /**
          * 这里的String参数对应AsyncTask中的第三个参数（也就是接收doInBackground的返回值）
@@ -680,43 +718,43 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
         @Override
         protected void onPostExecute(final CoolCarVo result) {
             //btn.setText("线程结束" + result);
-            Log.i(TAG, "exec end  " + result);
-            et_code.post(new Runnable() {
-                @Override
-                public void run() {
-                    et_code.requestFocus();
-                }
-            });
-
-            if (result == null) {
-                et_code.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(ScanShowActivity.this, "超过使用次数！！！", Toast.LENGTH_LONG).show();
-                    }
-                });
-                return;
-            }
-            final long dateTime = new Date().getTime();
-
-            tv_last.post(new Runnable() {
-                @Override
-                public void run() {
-                    // - 60*60*24*1000;
-                    String date = Utils.formatTime(dateTime, "yyyy-MM-dd_HH:mm:ss");
-                    DBUtils.getInstance().insertData(result.getName(), date, result.getCompany(), result.getRole(), result.getCode(), result.getExpoId());
-                    FileUtils.saveRecord(result.getName(), date, result.getCompany(), result.getRole(), result.getCode(), result.getExpoId());
-                    tv_last.setText(qrcode_last);
-                    tv_count.setText(++showCount + "");
-                    Toast.makeText(ScanShowActivity.this, "开门", Toast.LENGTH_LONG).show();
-                }
-            });
-
-            qrcode_last = qrcode;
-
-            openGateDoor();
-
-            perTime_qrcode = dateTime;
+//            Log.i(TAG, "exec end  " + result);
+//            et_code.post(new Runnable() {
+//                @Override
+//                public void run() {
+//                    et_code.requestFocus();
+//                }
+//            });
+//
+//            if (result == null) {
+//                et_code.post(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        Toast.makeText(ScanShowActivity.this, "超过使用次数！！！", Toast.LENGTH_LONG).show();
+//                    }
+//                });
+//                return;
+//            }
+//            final long dateTime = new Date().getTime();
+//
+//            tv_last.post(new Runnable() {
+//                @Override
+//                public void run() {
+//                    // - 60*60*24*1000;
+//                    String date = Utils.formatTime(dateTime, "yyyy-MM-dd_HH:mm:ss");
+//                    DBUtils.getInstance().insertData(result.getName(), date, result.getCompany(), result.getRole(), result.getCode(), result.getExpoId());
+//                    FileUtils.saveRecord(result.getName(), date, result.getCompany(), result.getRole(), result.getCode(), result.getExpoId());
+//                    tv_last.setText(qrcode_last);
+//                    tv_count.setText(++showCount + "");
+//                    //Toast.makeText(ScanShowActivity.this, "开门", Toast.LENGTH_LONG).show();
+//                }
+//            });
+//
+//            qrcode_last = qrcode;
+//
+//            openGateDoor();
+//
+//            perTime_qrcode = dateTime;
         }
         //该方法运行在UI线程当中,并且运行在UI线程当中 可以对UI空间进行设置
         @Override
@@ -748,12 +786,41 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
                         mDevice.setLock1(1);
 
                     } else {
-                        sleep(50);
+                        sleep(30);
                     }
+                    //Log.i(TAG, "open target : " + open);
                 } catch (Exception e) {
                     e.printStackTrace();
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(ScanShowActivity.this, "开闸接口异常！ ", Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 }
             }
         }
     }
+
+    private String getSerialNumber() {
+        String serial = "";
+        try {
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) {//8.0+
+                serial = Build.SERIAL;
+
+            } else {
+                Class<?> c = Class.forName("android.os.SystemProperties");
+                Method get = c.getMethod("get", String.class);
+                serial = (String) get.invoke(c, "ro.serialno");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return serial;
+
+    }
+
+
 }
