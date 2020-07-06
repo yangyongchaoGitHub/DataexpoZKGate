@@ -91,7 +91,7 @@ public class ScanShowActivity extends BascActivity implements View.OnClickListen
     private int checkModel = 1;
     int showCount = 0;
     String serial = "";
-    //
+    
     long scanTime = System.currentTimeMillis();
 
     @Override
